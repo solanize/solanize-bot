@@ -1,0 +1,11 @@
+# ASLA commit edilmez (kişisel/gizli)
+config.json
+*.session
+*.session-journal
+.env
+
+# python
+venv/
+__pycache__/
+*.pyc
+.DS_Store
