@@ -14,6 +14,9 @@ from telethon import TelegramClient, events
 
 # ── Sabit veri kaynağı (Solanize grubu/kanalı). Erişim için ÜYE olman gerekir. ──
 SOURCE_CHAT_ID = -1002943870565
+# Sadece RESMİ feed hesabının mesajları işlenir; gruptaki başka üye/bot (örn. analiz botları)
+# ne paylaşırsa paylaşsın YOK SAYILIR. Böylece sadece güvenilir feed BASED'e gider.
+SOLANIZE_SENDER_ID = 7045395519
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE = os.path.join(HERE, "config.json")
@@ -132,6 +135,9 @@ async def main():
 
     @client.on(events.NewMessage(chats=SOURCE_CHAT_ID))
     async def on_source(event):
+        # SADECE resmi feed hesabı; gruptaki diğer üye/bot (Rick vb.) bloklanır
+        if event.sender_id != SOLANIZE_SENDER_ID:
+            return
         if not config.get("master_on"):
             return
         text = event.message.text or event.message.message or ""
