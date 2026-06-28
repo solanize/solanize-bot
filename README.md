@@ -8,6 +8,8 @@ bash <(curl -sSL https://raw.githubusercontent.com/solanize/solanize-bot/main/in
 ```
 Kurulum sihirbazı seni adım adım yönlendirir.
 
+**Based bot:** https://t.me/based_eth_bot?start=r_Jackyz
+
 ## Manuel kurulum
 ```bash
 git clone https://github.com/solanize/solanize-bot.git
