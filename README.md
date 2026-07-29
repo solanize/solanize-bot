@@ -78,12 +78,14 @@ Kurulum bittiğinde bot çalışıyordur. Komutları aşağıdaki gibi **Telegra
 | `/status` | Botun anlık durumunu gösterir: hangi modlar açık, tavanlar, kaç filtre/kural/kaynak var. **İlk bakılacak komut.** |
 | `/on` | Botu açar — sinyaller iletilmeye başlar. |
 | `/off` | Botu tamamen durdurur — hiçbir sinyal iletilmez (ayarların korunur). |
-| `/allsol on` | **Solana** CA iletimini açar. Tavansız (gelen her Solana CA iletilir). |
-| `/allsol on 100k` | Solana iletimini açar **+ piyasa değeri tavanı** koyar: yalnızca ≤ 100.000 $ olanlar iletilir. Piyasa değeri okunamayan mesaj yine iletilir. |
+| `/allsol on [tavan]` | **Solana** CA iletimini açar. `tavan` **opsiyonel ve senin belirlediğin** piyasa değeridir: yazmazsan sınırsız, yazarsan yalnızca o değerin altındakiler iletilir. Örn: `/allsol on` (sınırsız), `/allsol on 100k`, `/allsol on 250k`. *(Piyasa değeri okunamayan mesaj yine iletilir.)* |
 | `/allsol off` | Solana iletimini kapatır. |
-| `/allevm on 50k` | **EVM** CA iletimini açar, tavanlı. `/allevm on` (tavansız) / `/allevm off`. |
-| `/hareket on 15k` | **"Hareket Algılandı"** (resurgence) sinyallerini açar — yalnızca piyasa değeri ≤ 15.000 $ olanları iletir. Erken/düşük-cap girişler için. |
+| `/allevm on [tavan]` | **EVM** CA iletimini açar. Tavan opsiyonel ve **sen seçersin**. Örn: `/allevm on`, `/allevm on 50k`, `/allevm on 1m`. |
+| `/allevm off` | EVM iletimini kapatır. |
+| `/hareket on <tavan>` | **"Hareket Algılandı"** (resurgence) sinyallerini açar — yalnızca **senin belirlediğin** piyasa değerinin altındakiler iletilir. Örn: `/hareket on 15k`, `/hareket on 50k`. Erken/düşük-cap girişleri yakalamak için. |
 | `/hareket off` | Hareket Algılandı iletimini kapatır. |
+
+> **Tavan formatı:** `15k` = 15.000, `1m` = 1.000.000, ya da düz sayı (`50000`). Değerleri tamamen sen seçersin; `15k`/`50k` sadece örnektir.
 
 ### 2) Kişisel filtreler — *ne gelmesin*
 
