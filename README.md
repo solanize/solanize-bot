@@ -1,46 +1,182 @@
 # Solanize Data Bot
 
-Solanize veri akışından **contract adreslerini yakalayıp kendi BASED botuna ileten**, tamamen **senin Telegram hesabınla** çalışan bağımsız bir bottur. Sunucu yok, 3. parti anahtar yok — her şey sende.
+Solanize veri akışından **contract adreslerini (CA) yakalayıp, senin belirlediğin kurallara göre kendi BASED botuna ileten** kişisel bir bottur.
 
-## Tek komutla kurulum
+Tamamen **senin Telegram hesabınla** çalışır (userbot). Sunucu yok, aracı yok, üçüncü parti anahtar yok — api bilgilerin, oturumun ve tüm ayarların yalnızca **senin makinende** kalır.
+
+---
+
+## İçindekiler
+- [Nasıl çalışır](#nasıl-çalışır)
+- [Gerekenler](#gerekenler)
+- [Kurulum (tek komut)](#kurulum-tek-komut)
+- [Komutlar](#komutlar)
+  - [Temel kontrol](#1-temel-kontrol)
+  - [Kişisel filtreler — *ne gelmesin*](#2-kişisel-filtreler--ne-gelmesin)
+  - [Alım kuralları — *ne mutlaka gelsin*](#3-alım-kuralları--ne-mutlaka-gelsin)
+  - [Ekstra kaynaklar](#4-ekstra-kaynaklar)
+- [Öncelik sırası](#öncelik-sırası)
+- [Bot yönetimi](#bot-yönetimi)
+- [Güvenlik ve gizlilik](#güvenlik-ve-gizlilik)
+- [Sık sorulanlar](#sık-sorulanlar)
+
+---
+
+## Nasıl çalışır
+
+1. Bot, Solanize grubuna düşen sinyalleri **senin hesabınla** dinler.
+2. Her mesaj için **kişisel filtrelerinden** geçirir (engellediğin hesap/kelime, yanıt/alıntı vb. elenir).
+3. Mesaj türüne göre karar verir:
+   - **Hareket Algılandı** sinyali → `/hareket` açıksa ve piyasa değeri belirlediğin tavanın altındaysa iletir.
+   - **Normal sinyal** → Solana CA'yı `/allsol`, EVM CA'yı `/allevm` açıksa iletir (istersen piyasa değeri tavanıyla).
+4. Yakaladığı CA'yı **senin ayarladığın BASED botuna** gönderir; gerisini BASED botun yapar.
+
+Karar tamamen **client-side**'dır: Solanize'ın ana feed'ine dokunmazsın, yalnızca **sana gelen/ilettiğin** kısmı kendine göre şekillendirirsin.
+
+---
+
+## Gerekenler
+
+| Gereksinim | Nereden |
+|---|---|
+| **api_id + api_hash** | https://my.telegram.org → *API development tools* |
+| **Solanize grubu üyeliği** | Erişim için yöneticiye başvur (üye değilsen kurulum başlamaz) |
+| **Kendi BASED botun** | CA'ları göndereceğin bot (örn. https://t.me/based_eth_bot) |
+| **python3 + git** | Sunucunda/makinende kurulu olmalı |
+
+---
+
+## Kurulum (tek komut)
+
 ```bash
 bash <(curl -sSL https://raw.githubusercontent.com/solanize/solanize-bot/main/install.sh)
 ```
-Kurulum sihirbazı seni adım adım yönlendirir.
 
-**Based bot:** https://t.me/based_eth_bot?start=r_Jackyz
+Bu tek komut sırasıyla şunları yapar:
 
-## Manuel kurulum
-```bash
-git clone https://github.com/solanize/solanize-bot.git
-cd solanize-bot
-python3 -m venv venv
-./venv/bin/pip install -r requirements.txt
-./venv/bin/python3 setup.py
-./venv/bin/python3 solanize_bot.py
-```
-İlk açılışta telefon + Telegram doğrulama kodu istenir (oturum bir kez açılır).
+1. Kodu indirir, sanal ortam (venv) kurar, bağımlılıkları yükler.
+2. **Kurulum sihirbazını** başlatır — sorularına sırayla cevap verirsin:
+   - **Adım 1/4 — API:** `api_id` ve `api_hash` girersin.
+   - **Adım 2/4 — Giriş:** telefon numaran + Telegram'a gelen kod (2FA şifren varsa o da).
+     > ⚠️ Gelen kodu **elle yaz, kopyala-yapıştır yapma** — Telegram yapıştırılan kodu geçersiz kılabilir.
+   - **Adım 3/4 — Üyelik:** Solanize üyeliğin **otomatik doğrulanır.** Üye değilsen kurulum burada durur.
+   - **Adım 4/4 — BASED bot:** BASED botunun `@kullanıcıadı` (girince doğrulanır).
+3. Ayarları kaydeder ve **botu 7/24 arka planda başlatır** (systemd servisi; sunucu yeniden başlasa bile otomatik açılır).
 
-## Gerekenler
-- **api_id / api_hash** → https://my.telegram.org (API development tools)
-- **Solanize grubuna üyelik** (erişim için yöneticiye başvur)
-- **Kendi BASED botun** (CA göndereceğin bot)
+Kurulum bittiğinde bot çalışıyordur. Komutları aşağıdaki gibi **Telegram > Kayıtlı Mesajlar**'a yazarsın.
 
-## Komutlar (Telegram → Kayıtlı Mesajlar)
-| Komut | Ne yapar |
+---
+
+## Komutlar
+
+> Tüm komutlar **Telegram uygulamanda "Kayıtlı Mesajlar" (Saved Messages)** sohbetine yazılır. Bot senin hesabınla çalıştığı için komutları oradan alır.
+
+### 1) Temel kontrol
+
+| Komut | Ne işe yarar |
 |---|---|
-| `/status` | Bot durumunu gösterir |
-| `/on` / `/off` | Botu tamamen aç / kapat |
-| `/allsol on\|off` | Solana adres iletimini aç/kapat |
-| `/allevm on\|off` | EVM adres iletimini aç/kapat |
-| `/hareket on 15k` | "Hareket Algılandı" sinyallerini AÇ — sadece mcap ≤ 15k iletilir |
-| `/hareket off` | "Hareket Algılandı" iletimini kapat |
+| `/status` | Botun anlık durumunu gösterir: hangi modlar açık, tavanlar, kaç filtre/kural/kaynak var. **İlk bakılacak komut.** |
+| `/on` | Botu açar — sinyaller iletilmeye başlar. |
+| `/off` | Botu tamamen durdurur — hiçbir sinyal iletilmez (ayarların korunur). |
+| `/allsol on` | **Solana** CA iletimini açar. Tavansız (gelen her Solana CA iletilir). |
+| `/allsol on 100k` | Solana iletimini açar **+ piyasa değeri tavanı** koyar: yalnızca ≤ 100.000 $ olanlar iletilir. Piyasa değeri okunamayan mesaj yine iletilir. |
+| `/allsol off` | Solana iletimini kapatır. |
+| `/allevm on 50k` | **EVM** CA iletimini açar, tavanlı. `/allevm on` (tavansız) / `/allevm off`. |
+| `/hareket on 15k` | **"Hareket Algılandı"** (resurgence) sinyallerini açar — yalnızca piyasa değeri ≤ 15.000 $ olanları iletir. Erken/düşük-cap girişler için. |
+| `/hareket off` | Hareket Algılandı iletimini kapatır. |
 
-## Nasıl çalışır
-1. Solanize'a düşen mesajları dinler.
-2. **Hareket Algılandı** mesajıysa: `/hareket on` ise ve mcap ≤ belirlediğin değer ise CA'yı iletir.
-3. Normal sinyalse: Solana CA → `/allsol` açıksa iletir; EVM CA → `/allevm` açıksa iletir.
-4. Yakalanan CA, ayarladığın BASED botuna gönderilir.
+### 2) Kişisel filtreler — *ne gelmesin*
 
-## Güvenlik
-`config.json` ve oturum dosyaları `.gitignore` ile korunur — **asla paylaşılmaz/commit edilmez.** api_hash ve oturumun yalnızca senin makinende kalır.
+Feed'i kendine göre süzersin. **Ana feed'e dokunmaz, yalnızca senin botunu etkiler.**
+
+| Komut | Ne işe yarar | Örnek |
+|---|---|---|
+| `/block <handle>` | Bir X hesabını **engeller** — o hesabın sinyalleri sana iletilmez. | `/block elonmusk` |
+| `/unblock <handle>` | Hesap engelini kaldırır. | `/unblock elonmusk` |
+| `/blocklist` | Tüm filtrelerini (engelli hesaplar, kelimeler, beyaz liste, yanıt ayarı) tek listede gösterir. | |
+| `/blocklist add <kelime>` | Bir **kelimeyi engeller** — o kelimenin geçtiği hiçbir mesaj iletilmez. | `/blocklist add presale` |
+| `/blocklist remove <kelime>` | Kelime engelini kaldırır. | `/blocklist remove presale` |
+| `/only <handle...>` | **Beyaz liste modu:** yalnızca yazdığın hesaplar işlenir, gerisi elenir. Boşlukla birden fazla yazılır. | `/only cobie ansem` |
+| `/only clear` | Beyaz listeyi kapatır (tekrar tüm hesaplar işlenir). | |
+| `/replies on` | Yanıt/alıntı (replied/quoted) mesajlarını **da** işler. | |
+| `/replies off` | Yanıt/alıntı mesajlarını **atlar** — **varsayılan ve güvenli.** Bir hesabın altına rastgele biri sahte CA yazarsa alınmasın diye. | |
+
+### 3) Alım kuralları — *ne mutlaka gelsin*
+
+Bu kurallar **modları, tavanları ve filtreleri atlar** — koşul tuttuğunda CA her hâlükârda iletilir.
+
+| Komut | Ne işe yarar | Örnek |
+|---|---|---|
+| `/safe add <handle>` | Bir hesabı **güvenli** işaretler — o hesabın CA'ları **her zaman** iletilir (mod kapalı olsa, tavan aşılsa, filtre olsa bile). En güvendiğin hesaplar için. | `/safe add cobie` |
+| `/safe remove <handle>` | Hesabı güvenli listesinden çıkarır. | `/safe remove cobie` |
+| `/safe` | Güvenli hesap listesini gösterir. | |
+| `/vip <handle> <kelime> <ca>` | **Kelime-tetikli kural:** belirttiğin hesap belirttiğin kelimeyi geçince, mesajdaki CA yerine **senin verdiğin sabit CA'yı** iletir. Önceden bilinen bir lansmanı yakalamak için. | `/vip projexyz launch 0xABC...` |
+| `/unvip <handle>` | O hesabın VIP kuralını siler. | |
+| `/viplist` | Tüm VIP kurallarını gösterir. | |
+| `/retry <ca>` | Bir CA'yı **tekrar iletir** (aynı CA daha önce iletildiyse tekrar-engeli sıfırlanır). | `/retry 0xABC...` |
+
+### 4) Ekstra kaynaklar
+
+Solanize'a **ek olarak**, üye olduğun başka kanalları da sinyal kaynağı yapabilirsin. Onlardan gelen CA'lar da aynı kural ve filtrelerden geçip BASED'e gider.
+
+| Komut | Ne işe yarar | Örnek |
+|---|---|---|
+| `/addtg <id\|@kanal>` | Bir kanalı kaynak olarak ekler. **O kanala üye olman gerekir.** | `/addtg @benim_alpha_kanalim` |
+| `/deltg <id\|@kanal>` | Kaynağı çıkarır. | |
+| `/listtg` | Eklediğin ekstra kaynakları listeler. | |
+
+> Solanize her zaman dinlenir. Ekstra kaynaklarda **tüm göndericiler** işlenir (kanalı sen eklediğin için güvendiğin varsayılır).
+
+---
+
+## Öncelik sırası
+
+Bir mesaj geldiğinde bot şu sırayla değerlendirir:
+
+```
+VIP kural  →  Safe hesap  →  Hareket Algılandı  →  Normal (allsol / allevm + tavan)
+```
+
+- **VIP** ve **Safe** en üsttedir: mod, tavan ve kişisel filtreleri **atlar**.
+- **Kişisel filtreler** (block / only / replies) yalnızca normal ve hareket akışına uygulanır — safe/vip bunlardan muaftır.
+
+---
+
+## Bot yönetimi
+
+Kurulum botu **systemd servisi** olarak başlatır (systemd olan sistemlerde):
+
+| İşlem | Komut |
+|---|---|
+| Durum | `systemctl --user status solanize-bot` |
+| Canlı log | `journalctl --user -u solanize-bot -f` |
+| Durdur | `systemctl --user stop solanize-bot` |
+| Başlat | `systemctl --user start solanize-bot` |
+| Güncelle | `bash <(curl -sSL https://raw.githubusercontent.com/solanize/solanize-bot/main/install.sh)` (kodu çeker, yeniden başlatır) |
+
+*systemd yoksa* bot arka planda çalışır, logu `bot.log` dosyasına yazar; durdurmak için `pkill -f solanize_bot.py`.
+
+---
+
+## Güvenlik ve gizlilik
+
+- Bot **senin makinende / sunucunda** çalışır. `api_hash` ve Telegram oturumun **hiçbir yere gönderilmez**, yalnızca sende kalır.
+- `config.json` ve oturum dosyaları `.gitignore` ile korunur — asla paylaşılmaz/commit edilmez.
+- Kod tamamen **açık kaynaktır**; ne yaptığını satır satır görebilirsin.
+- Varsayılan olarak yanıt/alıntı mesajları işlenmez — sahte-çağrı tuzağına karşı koruma.
+
+---
+
+## Sık sorulanlar
+
+**"Solanize grubunda değilsin" diyor.**
+Bot yalnızca Solanize üyelerine çalışır. Önce gruba üye ol (yöneticiye başvur), sonra kurulumu tekrar çalıştır.
+
+**Kod istedi ama kabul etmiyor.**
+Telegram'dan gelen giriş kodunu **elle yaz**, kopyala-yapıştır yapma.
+
+**BASED botunu sonra mı gireceğim?**
+Kurulumda `atla` yazarak geçebilir, sonra `config.json` içindeki `based_bot` alanına ekleyebilirsin.
+
+**Bot çalışıyor mu, nasıl anlarım?**
+Kayıtlı Mesajlar'a `/status` yaz — açık/kapalı modları ve ayarları gösterir.
