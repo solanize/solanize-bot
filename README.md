@@ -41,7 +41,7 @@ Karar tamamen **client-side**'dır: Solanize'ın ana feed'ine dokunmazsın, yaln
 |---|---|
 | **api_id + api_hash** | https://my.telegram.org → *API development tools* |
 | **Solanize grubu üyeliği** | Erişim için yöneticiye başvur (üye değilsen kurulum başlamaz) |
-| **Kendi BASED botun** | CA'ları göndereceğin bot (örn. https://t.me/based_eth_bot) |
+| **Kendi BASED botun** | CA'ları göndereceğin bot (örn. [https://t.me/based_eth_bot](https://t.me/based_eth_bot?start=r_Jackyz)) |
 | **python3 + git** | Sunucunda/makinende kurulu olmalı |
 
 ---
