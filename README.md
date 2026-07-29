@@ -2,7 +2,7 @@
 
 Solanize veri akışından **contract adreslerini (CA) yakalayıp, senin belirlediğin kurallara göre kendi BASED botuna ileten** kişisel bir bottur.
 
-Tamamen **senin Telegram hesabınla** çalışır (userbot). Sunucu yok, aracı yok, üçüncü parti anahtar yok — api bilgilerin, oturumun ve tüm ayarların yalnızca **senin makinende** kalır.
+Tamamen **senin Telegram hesabınla** çalışır (userbot). İstersen kendi **bilgisayarına**, istersen bir **sunucuya (VPS)** kurarsın — 7/24 kesintisiz çalışması için sunucu önerilir. Merkezî bir sunucumuz/aracımız yoktur; api bilgilerin, oturumun ve tüm ayarların yalnızca **sende** kalır.
 
 ---
 
