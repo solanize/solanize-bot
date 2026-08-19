@@ -12,7 +12,7 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE = os.path.join(HERE, "config.json")
 SESSION_PATH = os.path.join(HERE, "solanize")   # -> solanize.session
-SOURCE_CHAT_ID = -1002943870565                 # Solanize grubu
+SOURCE_CHAT_ID = -1003945790481                 # Solanize grubu
 
 G = "\033[32m"; BG = "\033[1;92m"; DIM = "\033[2;32m"; Y = "\033[33m"; RED = "\033[31m"; R = "\033[0m"
 CLR = "\033[2J\033[H"

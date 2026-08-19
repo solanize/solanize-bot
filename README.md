@@ -83,6 +83,8 @@ Kurulum bittiğinde bot çalışıyordur. Komutları aşağıdaki gibi **Telegra
 | `/allevm on [tavan]` | **EVM** CA iletimini açar. Tavan opsiyonel ve **sen seçersin**. Örn: `/allevm on`, `/allevm on 50k`, `/allevm on 1m`. |
 | `/allevm off` | EVM iletimini kapatır. |
 | `/hareket on <tavan>` | **"Hareket Algılandı"** (resurgence) sinyallerini açar — yalnızca **senin belirlediğin** piyasa değerinin altındakiler iletilir. Örn: `/hareket on 15k`, `/hareket on 50k`. Erken/düşük-cap girişleri yakalamak için. |
+| `/onchain on` / `/onchain off` | **Onchain Alert** başlığını açar/kapatır — akıllı cüzdan takibinden gelen sinyaller BASED bot'a iletilir. Varsayılan: kapalı. |
+| `/bstock on` / `/bstock off` | **Binance Stock List** başlığını açar/kapatır — Binance stock-meme listelemeleri BASED bot'a iletilir. Varsayılan: kapalı. |
 | `/hareket off` | Hareket Algılandı iletimini kapatır. |
 
 > **Tavan formatı:** `15k` = 15.000, `1m` = 1.000.000, ya da düz sayı (`50000`). Değerleri tamamen sen seçersin; `15k`/`50k` sadece örnektir.

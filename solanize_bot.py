@@ -14,10 +14,18 @@ from telethon import TelegramClient, events
 from telethon.utils import get_peer_id
 
 # ── Sabit veri kaynağı (Solanize grubu/kanalı). Erişim için ÜYE olman gerekir. ──
-SOURCE_CHAT_ID = -1002943870565
+SOURCE_CHAT_ID = -1003945790481   # Solanize (konu basliklarina ayrilmis grup)
+
+# Konu (topic) kimlikleri. Grup forum modunda; her akis kendi basliginda gelir.
+TOPIC_HAREKET       = 2    # Hareket Algilandi
+TOPIC_TWEET         = 4    # Tweet Monitor
+TOPIC_ONCHAIN       = 6    # Onchain Alert      -> /onchain on|off
+TOPIC_BINANCE_STOCK = 18   # Binance Stock List -> /bstock on|off
 # Sadece RESMİ feed hesabının mesajları işlenir; gruptaki başka üye/bot (örn. analiz botları)
 # ne paylaşırsa paylaşsın YOK SAYILIR. Böylece sadece güvenilir feed BASED'e gider.
 SOLANIZE_SENDER_ID = 7045395519
+# Binance Stock List basligini besleyen resmi bot. Diger tum basliklar SOLANIZE_SENDER_ID'den gelir.
+BSTOCK_SENDER_ID = 8864906277
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE = os.path.join(HERE, "config.json")
@@ -43,6 +51,8 @@ DEFAULTS = {
     "allsol_on": True,
     "allevm_on": True,
     "hareket_on": False,
+    "onchain_on": False,        # Onchain Alert basligi -> BASED
+    "bstock_on": False,         # Binance Stock List basligi -> BASED
     "hareket_cap": 15000,
     # ── kisisel filtreler (client-side, ana feed'e dokunmaz) ──
     "block_handles": [],   # bu hesaplar iletilmez (orn. elonmusk)
@@ -237,8 +247,36 @@ async def main():
         if not config.get("master_on"):
             return
         cid = event.chat_id
+        topic = None
         if cid == SOURCE_CHAT_ID:
-            # resmi Solanize feed: SADECE resmi hesap (gruptaki diğer üye/bot bloklanır)
+            # hangi konu basligindan geldi?
+            rt = getattr(event.message, "reply_to", None)
+            topic = getattr(rt, "reply_to_top_id", None) or getattr(rt, "reply_to_msg_id", None)
+
+            if topic == TOPIC_ONCHAIN:
+                if not config.get("onchain_on"):
+                    return
+                if event.sender_id != SOLANIZE_SENDER_ID:
+                    return
+                text = event.message.text or event.message.message or ""
+                ca = extract_solana(text) or extract_evm(text)
+                if ca:
+                    await forward_ca(ca, "ONCHAIN")
+                return
+
+            if topic == TOPIC_BINANCE_STOCK:
+                if not config.get("bstock_on"):
+                    return
+                if event.sender_id != BSTOCK_SENDER_ID:
+                    return
+                text = event.message.text or event.message.message or ""
+                ca = extract_evm(text) or extract_solana(text)
+                if ca:
+                    await forward_ca(ca, "BINANCE STOCK")
+                return
+
+            # diger basliklar (Tweet Monitor / Hareket Algilandi): SADECE resmi feed hesabi
+            # (gruptaki baska uye/bot ne atarsa atsin yok sayilir)
             if event.sender_id != SOLANIZE_SENDER_ID:
                 return
         elif cid not in {int(x) for x in config.get("extra_sources", [])}:
@@ -292,6 +330,12 @@ async def main():
             else:
                 reply = "Kullanım: /hareket on 15k  |  /hareket off"
                 changed = False
+        elif cmd == '/onchain':
+            config["onchain_on"] = (arg == 'on')
+            reply = f"Onchain Alert iletimi: {'AÇIK' if config['onchain_on'] else 'KAPALI'}"
+        elif cmd == '/bstock':
+            config["bstock_on"] = (arg == 'on')
+            reply = f"Binance Stock List iletimi: {'AÇIK' if config['bstock_on'] else 'KAPALI'}"
         elif cmd == '/block':
             if not arg:
                 reply = "Kullanım: /block <handle>   (örn: /block elonmusk)"; changed = False
@@ -431,6 +475,8 @@ async def main():
                      f"Solana (allsol): {'AÇIK' if config.get('allsol_on') else 'KAPALI'}" + (f" (≤{int(_sc)})" if config.get('allsol_on') and _sc else "") + "\n"
                      f"EVM (allevm): {'AÇIK' if config.get('allevm_on') else 'KAPALI'}" + (f" (≤{int(_ec)})" if config.get('allevm_on') and _ec else "") + "\n"
                      f"Hareket: {'AÇIK (≤' + str(int(config.get('hareket_cap', 15000))) + ')' if config.get('hareket_on') else 'KAPALI'}\n"
+                     f"Onchain Alert: {'AÇIK' if config.get('onchain_on') else 'KAPALI'}\n"
+                     f"Binance Stock: {'AÇIK' if config.get('bstock_on') else 'KAPALI'}\n"
                      f"BASED bot: {config.get('based_bot') or '(ayarlı değil)'}\n"
                      f"— Kurallar — ⭐safe:{len(config.get('safe_handles', []))} 🎯vip:{len(config.get('vip_rules', []))} 📡kaynak:{len(config.get('extra_sources', []))}\n"
                      f"— Filtreler — ⛔hesap:{len(bl)} kelime:{len(bw)} beyaz:{len(only) or '-'} ↩️yanıt-atla:{'✓' if config.get('skip_replies', True) else '✗'}")
@@ -447,6 +493,7 @@ async def main():
     print("📡 Solanize dinleniyor.")
     print("   Komutlar -> Telegram > Kayıtlı Mesajlar:")
     print("   /status  /on  /off  /allsol on [cap]  /allevm on [cap]  /hareket on 15k|off")
+    print("   /onchain on|off   /bstock on|off")
     print("   Filtre: /block <handle>  /unblock  /blocklist [add|remove <kelime>]  /only <handle...>  /replies on|off")
     print("   Kural : /safe add|remove <handle>  /vip <handle> <kelime> <ca>  /retry <ca>  (+ /viplist)")
     print("   Kaynak: /addtg <id|@kanal>  /deltg  /listtg   (kendi kanallarını da dinlet)")
