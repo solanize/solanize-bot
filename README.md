@@ -52,6 +52,20 @@ Karar tamamen **client-side**'dır: Solanize'ın ana feed'ine dokunmazsın, yaln
 bash <(curl -sSL https://raw.githubusercontent.com/solanize/solanize-bot/main/install.sh)
 ```
 
+## Güncelleme
+
+Bot güncellendiğinde tek komut yeter:
+
+```bash
+bash <(curl -sSL https://raw.githubusercontent.com/solanize/solanize-bot/main/update.sh)
+```
+
+Ayarların (`config.json`) ve Telegram oturumun **korunur** — tekrar giriş yapman gerekmez,
+safe/block listelerin ve açık-kapalı tercihlerin aynen kalır.
+
+Güncellemenin geçtiğini doğrulamak için Kayıtlı Mesajlar'dan `/status` yaz;
+çıktıda **Onchain Alert** ve **Binance Stock** satırlarını görüyorsan tamamdır.
+
 Bu tek komut sırasıyla şunları yapar:
 
 1. Kodu indirir, sanal ortam (venv) kurar, bağımlılıkları yükler.
