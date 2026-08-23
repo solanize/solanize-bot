@@ -1,4 +1,4 @@
-# Solanize Data Bot
+# Solanize Bot
 
 Solanize veri akışından **contract adreslerini (CA) yakalayıp, senin belirlediğin kurallara göre kendi BASED botuna ileten** kişisel bir bottur.
 
