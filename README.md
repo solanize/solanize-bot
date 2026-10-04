@@ -29,6 +29,7 @@ Tamamen **senin Telegram hesabınla** çalışır (userbot). İstersen kendi **b
 3. Mesaj türüne göre karar verir:
    - **Hareket Algılandı** sinyali → `/hareket` açıksa ve piyasa değeri belirlediğin tavanın altındaysa iletir.
    - **Normal sinyal** → Solana CA'yı `/allsol`, EVM CA'yı `/allevm` açıksa iletir (istersen piyasa değeri tavanıyla).
+   - **Solanize Agent raporu** → yapay zekanın 🟢 *Bakmaya değer* / 🟡 *Zayıf-izle* sonucu verdiği raporlardaki CA'yı, `/agent` ile açtığın renklere göre iletir (varsayılan **kapalı**).
 4. Yakaladığı CA'yı **senin ayarladığın BASED botuna** gönderir; gerisini BASED botun yapar.
 
 Karar tamamen **client-side**'dır: Solanize'ın ana feed'ine dokunmazsın, yalnızca **sana gelen/ilettiğin** kısmı kendine göre şekillendirirsin.
@@ -64,7 +65,7 @@ Ayarların (`config.json`) ve Telegram oturumun **korunur** — tekrar giriş ya
 safe/block listelerin ve açık-kapalı tercihlerin aynen kalır.
 
 Güncellemenin geçtiğini doğrulamak için Kayıtlı Mesajlar'dan `/status` yaz;
-çıktıda **Onchain Alert** ve **Binance Stock** satırlarını görüyorsan tamamdır.
+çıktıda **Onchain Alert**, **Binance Stock** ve **Agent** satırlarını görüyorsan tamamdır.
 
 Bu tek komut sırasıyla şunları yapar:
 
@@ -100,6 +101,14 @@ Kurulum bittiğinde bot çalışıyordur. Komutları aşağıdaki gibi **Telegra
 | `/onchain on` / `/onchain off` | **Onchain Alert** başlığını açar/kapatır — akıllı cüzdan takibinden gelen sinyaller BASED bot'a iletilir. Varsayılan: kapalı. |
 | `/bstock on` / `/bstock off` | **Binance Stock List** başlığını açar/kapatır — Binance stock-meme listelemeleri BASED bot'a iletilir. Varsayılan: kapalı. |
 | `/hareket off` | Hareket Algılandı iletimini kapatır. |
+| `/agent yesil on` / `/agent yesil off` | **Solanize Agent** 🟢 *BAKMAYA DEĞER* raporlarındaki CA'yı BASED'e iletir. Varsayılan: kapalı. En seçici seçenek. |
+| `/agent sari on` / `/agent sari off` | Agent 🟡 *ZAYIF-İZLE* raporlarındaki CA'yı iletir. 🟢'dan çok daha fazla rapor gelir — mutlaka `/agent cap` ile birlikte kullan. Varsayılan: kapalı. |
+| `/agent hepsi on` / `/agent hepsi off` | 🟢 ve 🟡'yı birlikte açar/kapatır. (`/agent on` / `/agent off` da aynı işi görür.) |
+| `/agent cap <tavan>` / `/agent cap off` | Raporda yazan **FDV** bu değerin üstündeyse iletmez. Örn: `/agent cap 50k`. FDV yazmıyorsa rapor yine iletilir. |
+| `/agent bot on` / `/agent bot off` | Raporda **"Bot takipçi" (2+ 💩)** uyarısı varsa iletmez. Varsayılan: **açık** (güvenli). |
+| `/agent` | Agent ayarlarının durumunu gösterir. |
+
+> **Agent notu:** Agent bir yapay zeka analizidir, yatırım tavsiyesi değildir. Raporlar Solanize'ın resmi hesabından, grubun *Agent* başlığında yayınlanır; bot yalnızca o hesabın mesajlarını işler. Alıma dönüşüp dönüşmeyeceği ve tutarı **senin BASED botunun ayarlarına** bağlıdır.
 
 > **Tavan formatı:** `15k` = 15.000, `1m` = 1.000.000, ya da düz sayı (`50000`). Değerleri tamamen sen seçersin; `15k`/`50k` sadece örnektir.
 
@@ -154,6 +163,8 @@ Bir mesaj geldiğinde bot şu sırayla değerlendirir:
 ```
 VIP kural  →  Safe hesap  →  Hareket Algılandı  →  Normal (allsol / allevm + tavan)
 ```
+
+> **Onchain Alert**, **Binance Stock** ve **Agent** gibi ayrı başlıklar bu sıradan bağımsızdır: her biri kendi komutuyla açılır ve yalnızca kendi başlığındaki resmi hesabın mesajlarını işler. Aynı CA başka bir yoldan zaten iletildiyse tekrar iletilmez.
 
 - **VIP** ve **Safe** en üsttedir: mod, tavan ve kişisel filtreleri **atlar**.
 - **Kişisel filtreler** (block / only / replies) yalnızca normal ve hareket akışına uygulanır — safe/vip bunlardan muaftır.

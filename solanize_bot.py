@@ -21,6 +21,7 @@ TOPIC_HAREKET       = 2    # Hareket Algilandi
 TOPIC_TWEET         = 4    # Tweet Monitor
 TOPIC_ONCHAIN       = 6    # Onchain Alert      -> /onchain on|off
 TOPIC_BINANCE_STOCK = 18   # Binance Stock List -> /bstock on|off
+TOPIC_AGENT         = 101181   # Solanize Agent raporlari (yapay zeka analizi) -> /agent yesil|sari|hepsi on|off
 # Sadece RESMİ feed hesabının mesajları işlenir; gruptaki başka üye/bot (örn. analiz botları)
 # ne paylaşırsa paylaşsın YOK SAYILIR. Böylece sadece güvenilir feed BASED'e gider.
 SOLANIZE_SENDER_ID = 7045395519
@@ -54,6 +55,11 @@ DEFAULTS = {
     "onchain_on": False,        # Onchain Alert basligi -> BASED
     "bstock_on": False,         # Binance Stock List basligi -> BASED
     "hareket_cap": 15000,
+    # ── Solanize Agent (yapay zeka raporlari): VARSAYILAN KAPALI, sen acarsin ──
+    "agent_green_on": False,    # 🟢 BAKMAYA DEGER raporlarinin CA'si -> BASED
+    "agent_yellow_on": False,   # 🟡 ZAYIF-IZLE raporlarinin CA'si   -> BASED
+    "agent_cap": 0,             # 0 = tavansiz; >0 ise raporda yazan FDV bu degerin ustundeyse iletilmez
+    "agent_skip_bot": True,     # rapor "Bot takipci" (2+ 💩) uyarisi tasiyorsa iletme (guvenli)
     # ── kisisel filtreler (client-side, ana feed'e dokunmaz) ──
     "block_handles": [],   # bu hesaplar iletilmez (orn. elonmusk)
     "block_words": [],     # bu kelimeler gecen mesajlar iletilmez
@@ -198,6 +204,88 @@ def parse_amount_k(s):
         return 15000
 
 
+# ── Solanize Agent raporlari ──
+AGENT_VERDICT_RE = re.compile(r'SONU[ÇC]\s*:\s*\**\s*(🟢|🟡)')
+AGENT_NOCA_RE = re.compile(r'CA\s+do[ğg]rulanamad[ıi]', re.IGNORECASE)   # rapor "CA dogrulanamadi" uyarisi tasiyorsa
+AGENT_BOT_RE = re.compile(r'Bot\s+takip[çc]i', re.IGNORECASE)             # rapor "Bot takipci: N hesap 💩" satiri tasiyorsa
+AGENT_TOKEN_LINE_RE = re.compile(r'Token\*{0,2}\s*:')
+AGENT_COLORS = {'yesil': 'green', 'yeşil': 'green', 'green': 'green',
+                'sari': 'yellow', 'sarı': 'yellow', 'yellow': 'yellow',
+                'hepsi': 'all', 'all': 'all'}
+
+
+def route_agent(text):
+    """Agent raporunu degerlendirir -> (ca, tag, sebep). ca None ise iletilmez; sebep nedenini soyler.
+    Sadece raporun 'Token' satirindaki CA alinir (Solana/EVM) - rapordaki baska linkler/CA'lar sayilmaz."""
+    m = AGENT_VERDICT_RE.search(text or "")
+    if not m:
+        return None, None, "🟢/🟡 sonuc satiri yok"
+    color = m.group(1)
+    if color == '🟢' and not config.get("agent_green_on"):
+        return None, None, "kapali"
+    if color == '🟡' and not config.get("agent_yellow_on"):
+        return None, None, "kapali"
+    if AGENT_NOCA_RE.search(text):
+        return None, None, "CA dogrulanamadi uyarisi var"
+    if config.get("agent_skip_bot", True) and AGENT_BOT_RE.search(text):
+        return None, None, "Bot takipci uyarisi (2+ 💩)"
+    line = next((ln for ln in text.splitlines() if AGENT_TOKEN_LINE_RE.search(ln)), "")
+    ca = (extract_evm(line) if '0x' in line.lower() else None) or extract_solana(line)
+    if not ca:
+        return None, None, "Token satirinda CA yok"
+    cap = float(config.get("agent_cap") or 0)
+    mc = parse_mcap(line)
+    if cap and mc is not None and mc > cap:
+        return None, None, f"FDV {int(mc)} > tavan {int(cap)}"
+    return ca, f"AGENT {color}", None
+
+
+def agent_status_text():
+    cap = float(config.get("agent_cap") or 0)
+    return ("🤖 AGENT\n"
+            f"🟢 Bakmaya değer: {'AÇIK' if config.get('agent_green_on') else 'KAPALI'}\n"
+            f"🟡 Zayıf-izle: {'AÇIK' if config.get('agent_yellow_on') else 'KAPALI'}\n"
+            f"FDV tavanı: {('≤' + str(int(cap))) if cap else 'yok'}\n"
+            f"Bot (💩) uyarılı raporları atla: {'EVET (güvenli)' if config.get('agent_skip_bot', True) else 'HAYIR'}\n\n"
+            "/agent yesil on|off  ·  /agent sari on|off  ·  /agent hepsi on|off\n"
+            "/agent cap 50k|off  ·  /agent bot on|off")
+
+
+def agent_command(p):
+    """'/agent ...' komutunu isler -> (cevap, degisti_mi). p = komutun kelimeleri (ilki '/agent')."""
+    a = [x.lower() for x in p[1:]]
+    if not a or a[0] in ('durum', 'status'):
+        return agent_status_text(), False
+    # /agent on|off  -> hepsi
+    if a[0] in ('on', 'off'):
+        a = ['hepsi', a[0]]
+    if a[0] in AGENT_COLORS and len(a) > 1 and a[1] in ('on', 'off'):
+        on = (a[1] == 'on')
+        which = AGENT_COLORS[a[0]]
+        if which in ('green', 'all'):
+            config["agent_green_on"] = on
+        if which in ('yellow', 'all'):
+            config["agent_yellow_on"] = on
+        label = {'green': '🟢 Bakmaya değer', 'yellow': '🟡 Zayıf-izle', 'all': '🟢+🟡 Hepsi'}[which]
+        if on:
+            return (f"🤖 Agent {label}: AÇIK\nAgent'ın bu sonuçla yayınladığı raporlardaki CA artık BASED botuna iletilir.\n"
+                    "Kendi riskin: istersen /agent cap ile FDV tavanı koy."), True
+        return f"🤖 Agent {label}: KAPALI", True
+    if a[0] == 'cap' and len(a) > 1:
+        if a[1] in ('off', '0', 'kapat', 'yok'):
+            config["agent_cap"] = 0
+            return "🤖 Agent FDV tavanı: YOK", True
+        if re.fullmatch(r'\$?[\d.,]+[km]?', a[1]):
+            config["agent_cap"] = parse_amount_k(a[1])
+            return f"🤖 Agent FDV tavanı: ≤ {int(config['agent_cap'])}  (raporda FDV yazmıyorsa iletilir)", True
+        return "Kullanım: /agent cap 50k  |  /agent cap off", False
+    if a[0] == 'bot' and len(a) > 1 and a[1] in ('on', 'off'):
+        config["agent_skip_bot"] = (a[1] == 'on')
+        return ("🤖 Bot (💩) uyarılı raporlar: ATLANIYOR (güvenli)" if config["agent_skip_bot"]
+                else "🤖 Bot (💩) uyarılı raporlar: İŞLENİYOR (riskli)"), True
+    return "Kullanım:\n" + agent_status_text(), False
+
+
 def load_config():
     cfg = dict(DEFAULTS)
     if os.path.exists(CONFIG_FILE):
@@ -252,6 +340,19 @@ async def main():
             # hangi konu basligindan geldi?
             rt = getattr(event.message, "reply_to", None)
             topic = getattr(rt, "reply_to_top_id", None) or getattr(rt, "reply_to_msg_id", None)
+
+            if topic == TOPIC_AGENT:
+                if not (config.get("agent_green_on") or config.get("agent_yellow_on")):
+                    return
+                if event.sender_id != SOLANIZE_SENDER_ID:
+                    return
+                text = event.message.text or event.message.message or ""
+                ca, tag, why = route_agent(text)
+                if ca:
+                    await forward_ca(ca, tag)
+                elif why and why != "kapali":
+                    print(f"⏭️  AGENT atlandı: {why}")
+                return
 
             if topic == TOPIC_ONCHAIN:
                 if not config.get("onchain_on"):
@@ -336,6 +437,8 @@ async def main():
         elif cmd == '/bstock':
             config["bstock_on"] = (arg == 'on')
             reply = f"Binance Stock List iletimi: {'AÇIK' if config['bstock_on'] else 'KAPALI'}"
+        elif cmd == '/agent':
+            reply, changed = agent_command(p)
         elif cmd == '/block':
             if not arg:
                 reply = "Kullanım: /block <handle>   (örn: /block elonmusk)"; changed = False
@@ -477,6 +580,8 @@ async def main():
                      f"Hareket: {'AÇIK (≤' + str(int(config.get('hareket_cap', 15000))) + ')' if config.get('hareket_on') else 'KAPALI'}\n"
                      f"Onchain Alert: {'AÇIK' if config.get('onchain_on') else 'KAPALI'}\n"
                      f"Binance Stock: {'AÇIK' if config.get('bstock_on') else 'KAPALI'}\n"
+                     f"Agent: 🟢 {'AÇIK' if config.get('agent_green_on') else 'KAPALI'} · 🟡 {'AÇIK' if config.get('agent_yellow_on') else 'KAPALI'}"
+                     + (f" (FDV ≤{int(config.get('agent_cap'))})" if config.get('agent_cap') else "") + "\n"
                      f"BASED bot: {config.get('based_bot') or '(ayarlı değil)'}\n"
                      f"— Kurallar — ⭐safe:{len(config.get('safe_handles', []))} 🎯vip:{len(config.get('vip_rules', []))} 📡kaynak:{len(config.get('extra_sources', []))}\n"
                      f"— Filtreler — ⛔hesap:{len(bl)} kelime:{len(bw)} beyaz:{len(only) or '-'} ↩️yanıt-atla:{'✓' if config.get('skip_replies', True) else '✗'}")
@@ -494,6 +599,7 @@ async def main():
     print("   Komutlar -> Telegram > Kayıtlı Mesajlar:")
     print("   /status  /on  /off  /allsol on [cap]  /allevm on [cap]  /hareket on 15k|off")
     print("   /onchain on|off   /bstock on|off")
+    print("   Agent : /agent yesil|sari|hepsi on|off   /agent cap 50k|off   /agent bot on|off   /agent (durum)")
     print("   Filtre: /block <handle>  /unblock  /blocklist [add|remove <kelime>]  /only <handle...>  /replies on|off")
     print("   Kural : /safe add|remove <handle>  /vip <handle> <kelime> <ca>  /retry <ca>  (+ /viplist)")
     print("   Kaynak: /addtg <id|@kanal>  /deltg  /listtg   (kendi kanallarını da dinlet)")
